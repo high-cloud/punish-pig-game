@@ -21,45 +21,50 @@
 
         .header {
             text-align: center;
-            padding: 20px;
+            padding: 15px 10px;
             color: white;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            flex-shrink: 0;
         }
 
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 1.8em;
+            margin-bottom: 8px;
         }
 
         .stats {
             display: flex;
             justify-content: center;
-            gap: 30px;
-            font-size: 1.3em;
-            margin-top: 10px;
+            gap: 10px;
+            font-size: 0.9em;
+            margin-top: 8px;
+            flex-wrap: wrap;
         }
 
         .stat-item {
             background: rgba(255,255,255,0.2);
-            padding: 10px 25px;
-            border-radius: 25px;
+            padding: 6px 12px;
+            border-radius: 20px;
             backdrop-filter: blur(10px);
         }
 
         #game-area {
             position: relative;
             width: 100%;
-            height: calc(100vh - 150px);
-            margin-top: 20px;
+            flex: 1;
+            overflow: hidden;
         }
 
         .pig {
             position: absolute;
-            font-size: 60px;
+            font-size: 50px;
             cursor: pointer;
             user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
             transition: transform 0.1s;
             animation: appear 0.3s ease-out;
+            touch-action: manipulation;
         }
 
         @keyframes appear {
@@ -192,6 +197,60 @@
             0% { transform: scale(0); opacity: 1; }
             100% { transform: scale(2); opacity: 0; }
         }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            body {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                height: 100dvh;
+            }
+
+            .header {
+                padding: 10px 5px;
+            }
+
+            .header h1 {
+                font-size: 1.4em;
+                margin-bottom: 5px;
+            }
+
+            .stats {
+                gap: 6px;
+                font-size: 0.75em;
+            }
+
+            .stat-item {
+                padding: 5px 10px;
+            }
+
+            #game-area {
+                margin-top: 5px;
+            }
+
+            .pig {
+                font-size: 45px;
+            }
+
+            .start-btn {
+                padding: 15px 40px;
+                font-size: 20px;
+            }
+
+            .game-over h2 {
+                font-size: 32px;
+            }
+
+            .game-over p {
+                font-size: 18px;
+                margin-bottom: 20px;
+            }
+
+            .combo-text {
+                font-size: 32px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -280,13 +339,26 @@
             pig.className = 'pig';
             pig.textContent = pigEmojis[Math.floor(Math.random() * pigEmojis.length)];
 
-            const maxX = gameArea.clientWidth - 80;
-            const maxY = gameArea.clientHeight - 80;
+            // 获取实际的游戏区域尺寸
+            const areaWidth = gameArea.clientWidth;
+            const areaHeight = gameArea.clientHeight;
+
+            // 猪的大小（根据屏幕自适应）
+            const pigSize = window.innerWidth <= 768 ? 50 : 70;
+
+            // 确保猪完全在可见区域内
+            const maxX = Math.max(0, areaWidth - pigSize);
+            const maxY = Math.max(0, areaHeight - pigSize);
 
             pig.style.left = Math.random() * maxX + 'px';
             pig.style.top = Math.random() * maxY + 'px';
 
+            // 支持触摸和点击
             pig.addEventListener('click', punishPig);
+            pig.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                punishPig(e);
+            }, { passive: false });
 
             gameArea.appendChild(pig);
 
@@ -317,7 +389,17 @@
             scoreDisplay.textContent = score;
             comboDisplay.textContent = combo;
 
-            showPunishment(e.clientX, e.clientY);
+            // 获取触摸或点击坐标
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            showPunishment(clientX, clientY);
 
             if (combo >= 5) {
                 showCombo(combo);
@@ -329,7 +411,7 @@
                 comboDisplay.textContent = combo;
             }, 1500);
 
-            createExplosion(e.clientX, e.clientY);
+            createExplosion(clientX, clientY);
 
             pig.remove();
         }
