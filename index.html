@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>制裁臭猪小游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            font-size: 1.3em;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 25px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 150px);
+            margin-top: 20px;
+        }
+
+        .pig {
+            position: absolute;
+            font-size: 60px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s;
+            animation: appear 0.3s ease-out;
+        }
+
+        @keyframes appear {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .pig:hover {
+            transform: scale(1.2);
+        }
+
+        .punishment {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff4757;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+            animation: fly-up 1s ease-out forwards;
+        }
+
+        @keyframes fly-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(1.5);
+            }
+        }
+
+        .combo-text {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            pointer-events: none;
+            animation: combo-pop 0.8s ease-out forwards;
+            z-index: 1000;
+        }
+
+        @keyframes combo-pop {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.3);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .start-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 50px;
+            font-size: 24px;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        .start-btn:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+        }
+
+        .game-over.show {
+            display: flex;
+        }
+
+        .game-over h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .game-over p {
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+
+        .game-over button {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+
+        .explosion {
+            position: absolute;
+            pointer-events: none;
+            animation: explode 0.5s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>制裁臭猪大作战 🐷</h1>
+        <div class="stats">
+            <div class="stat-item">已制裁: <span id="score">0</span> 次</div>
+            <div class="stat-item">连击: <span id="combo">0</span>x</div>
+            <div class="stat-item">最高连击: <span id="max-combo">0</span>x</div>
+            <div class="stat-item">时间: <span id="timer">30</span>s</div>
+        </div>
+    </div>
+
+    <div id="game-area"></div>
+
+    <button class="start-btn" id="start-btn">开始制裁！</button>
+
+    <div class="game-over" id="game-over">
+        <h2>制裁结束！</h2>
+        <p>总共制裁了 <span id="final-score">0</span> 只臭猪</p>
+        <p>最高连击: <span id="final-combo">0</span>x</p>
+        <p id="rank"></p>
+        <button onclick="restartGame()">再来一次</button>
+    </div>
+
+    <script>
+        const gameArea = document.getElementById('game-area');
+        const startBtn = document.getElementById('start-btn');
+        const scoreDisplay = document.getElementById('score');
+        const comboDisplay = document.getElementById('combo');
+        const maxComboDisplay = document.getElementById('max-combo');
+        const timerDisplay = document.getElementById('timer');
+        const gameOver = document.getElementById('game-over');
+
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let timeLeft = 30;
+        let gameInterval;
+        let timerInterval;
+        let comboTimeout;
+        let isGameRunning = false;
+
+        const punishments = [
+            '臭猪！', '接招！', '哈！', '制裁！',
+            '啪啪啪！', '打你！', '哼！', '吃我一击！',
+            '双击！', '三连击！', '暴击！', '完美！',
+            '漂亮！', '不错！', '继续！', '加油！',
+            '秒杀！', '神操作！', '厉害！', '牛！'
+        ];
+
+        const pigEmojis = ['🐷', '🐖', '🐽', '🥓', '🍖'];
+
+        const ranks = [
+            { min: 0, title: '菜鸟制裁者 - 还需要多练习哦！' },
+            { min: 20, title: '合格制裁者 - 不错的开始！' },
+            { min: 40, title: '熟练制裁者 - 越来越强了！' },
+            { min: 60, title: '精英制裁者 - 很厉害！' },
+            { min: 80, title: '大师制裁者 - 太强了！' },
+            { min: 100, title: '传说制裁者 - 无人能挡！' }
+        ];
+
+        function startGame() {
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            timeLeft = 30;
+            isGameRunning = true;
+
+            scoreDisplay.textContent = score;
+            comboDisplay.textContent = combo;
+            maxComboDisplay.textContent = maxCombo;
+            timerDisplay.textContent = timeLeft;
+
+            startBtn.style.display = 'none';
+            gameArea.innerHTML = '';
+
+            gameInterval = setInterval(spawnPig, 800);
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function spawnPig() {
+            if (!isGameRunning) return;
+
+            const pig = document.createElement('div');
+            pig.className = 'pig';
+            pig.textContent = pigEmojis[Math.floor(Math.random() * pigEmojis.length)];
+
+            const maxX = gameArea.clientWidth - 80;
+            const maxY = gameArea.clientHeight - 80;
+
+            pig.style.left = Math.random() * maxX + 'px';
+            pig.style.top = Math.random() * maxY + 'px';
+
+            pig.addEventListener('click', punishPig);
+
+            gameArea.appendChild(pig);
+
+            setTimeout(() => {
+                if (pig.parentNode) {
+                    pig.remove();
+                    if (isGameRunning) {
+                        combo = 0;
+                        comboDisplay.textContent = combo;
+                    }
+                }
+            }, 2000);
+        }
+
+        function punishPig(e) {
+            if (!isGameRunning) return;
+
+            const pig = e.target;
+
+            score++;
+            combo++;
+
+            if (combo > maxCombo) {
+                maxCombo = combo;
+                maxComboDisplay.textContent = maxCombo;
+            }
+
+            scoreDisplay.textContent = score;
+            comboDisplay.textContent = combo;
+
+            showPunishment(e.clientX, e.clientY);
+
+            if (combo >= 5) {
+                showCombo(combo);
+            }
+
+            clearTimeout(comboTimeout);
+            comboTimeout = setTimeout(() => {
+                combo = 0;
+                comboDisplay.textContent = combo;
+            }, 1500);
+
+            createExplosion(e.clientX, e.clientY);
+
+            pig.remove();
+        }
+
+        function showPunishment(x, y) {
+            const punishment = document.createElement('div');
+            punishment.className = 'punishment';
+            punishment.textContent = punishments[Math.floor(Math.random() * punishments.length)];
+            punishment.style.left = x + 'px';
+            punishment.style.top = y + 'px';
+            document.body.appendChild(punishment);
+
+            setTimeout(() => punishment.remove(), 1000);
+        }
+
+        function showCombo(comboCount) {
+            const comboText = document.createElement('div');
+            comboText.className = 'combo-text';
+            comboText.textContent = comboCount + ' 连击！';
+            document.body.appendChild(comboText);
+
+            setTimeout(() => comboText.remove(), 800);
+        }
+
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.textContent = '💥';
+            explosion.style.left = x - 25 + 'px';
+            explosion.style.top = y - 25 + 'px';
+            explosion.style.fontSize = '50px';
+            document.body.appendChild(explosion);
+
+            setTimeout(() => explosion.remove(), 500);
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            timerDisplay.textContent = timeLeft;
+
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
+
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('final-combo').textContent = maxCombo;
+
+            const rank = ranks.reverse().find(r => score >= r.min);
+            document.getElementById('rank').textContent = rank.title;
+
+            gameOver.classList.add('show');
+        }
+
+        function restartGame() {
+            gameOver.classList.remove('show');
+            startGame();
+        }
+
+        startBtn.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
